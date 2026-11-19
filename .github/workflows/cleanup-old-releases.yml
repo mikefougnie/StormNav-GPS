@@ -1,0 +1,30 @@
+# One-time cleanup: removes releases and tags that point at commits no longer in main's history.
+# Safe to delete this file after it has run once.
+name: Clean up old releases
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cleanup-old-releases.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Delete releases and tags not on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch --tags --force
+          for tag in $(git tag); do
+            if git merge-base --is-ancestor "$tag" origin/main 2>/dev/null; then
+              echo "keep $tag"
+            else
+              echo "delete $tag"
+              gh release delete "$tag" --cleanup-tag --yes || git push origin ":refs/tags/$tag" || true
+            fi
+          done
