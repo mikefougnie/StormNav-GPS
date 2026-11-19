@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StormNav: Weather-Aware GPS</title>
+<meta name="description" content="StormNav is a free, ad-free GPS for Android that sees storms on your route and helps you detour or wait them out.">
+<style>
+:root{color-scheme:light dark}
+body{margin:0;font:17px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0b0f16;color:#e6e9ee}
+main{max-width:860px;margin:0 auto;padding:24px 20px 60px}
+.banner{width:100%;border-radius:16px;display:block}
+.head{display:flex;gap:16px;align-items:center;margin:24px 0 8px}
+.head img{width:72px;height:72px;border-radius:16px}
+h1{margin:0;font-size:32px} .tag{color:#7ab8ff;margin:0}
+h2{font-size:20px;margin:28px 0 6px;color:#fff}
+ul{padding-left:22px} li{margin:5px 0}
+.btn{display:inline-block;margin:18px 0 6px;padding:12px 20px;border-radius:12px;background:#1e88ff;color:#fff;text-decoration:none;font-weight:600}
+.btn.off{background:#2a313b;color:#c7ccd4}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.btns .btn{margin:0}
+.btn.dl{background:#2ea043;display:inline-flex;align-items:center;gap:8px}
+.btn.dl:hover{background:#3fb950}
+.note{color:#9aa3ae;font-size:14px}
+footer{margin-top:40px;color:#9aa3ae;font-size:14px;border-top:1px solid #222a33;padding-top:14px}
+a{color:#7ab8ff}
+</style></head><body><main>
+<img class="banner" src="stormnav-banner.png" alt="StormNav driving screen with radar, gauges and Storm Timer">
+<div class="head"><img src="stormnav-icon.png" alt="StormNav icon"><div><h1>StormNav</h1><p class="tag">Weather-aware GPS for Android · free, no ads</p></div></div>
+<p>StormNav is a navigator that watches the weather for you. It shows live NOAA radar under the roads, tells you how many minutes until you reach the next storm, and helps you find a detour or a safe place to wait it out.</p>
+<div class="btns">
+<a class="btn off" id="play" href="#">Google Play: coming soon</a>
+<a class="btn dl" href="https://github.com/mikefougnie/StormNav-GPS/releases/latest/download/StormNav.apk"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M11 3h2v9.6l3.3-3.3 1.4 1.4L12 16.4l-5.7-5.7 1.4-1.4L11 12.6V3zM5 19h14v2H5z"/></svg>Download from GitHub</a>
+</div>
+<p class="note">Android only. Open the downloaded file to install; if your phone asks, allow "Install unknown apps" for your browser.</p>
+<h2>Why I built StormNav</h2>
+<p>At 4:40 one morning I was driving to work through a heavy storm. Halfway there, a tornado touched down, and the radio said it would reach the area around my work in six minutes. I was five minutes away, driving straight toward it in the dark, with rain going sideways. I made it into the parking lot and was rushed into a tornado shelter.</p>
+<p>Later that week, I dreamed my GPS had weather radar built in. I decided to make it real. That's StormNav.</p>
+<p class="note">— Michael Fougnie</p>
+<h2>See storms before you hit them</h2>
+<ul>
+<li>Live radar, updated as soon as a new image is out (about every 2 minutes)</li>
+<li>Storm Timer: minutes until the next band of heavy rain on your route</li>
+<li>Measures how storms are moving and checks where they'll be when you get there</li>
+<li>National Weather Service alerts along your route and where you are</li>
+</ul>
+<h2>Detour or wait it out</h2>
+<ul>
+<li>Severe storm ahead? Find a detour, wait it out, or keep going</li>
+<li>Gas stations, restaurants, hotels and rest areas before the storm, and a "you're clear" alert when it passes</li>
+<li>Best time to leave: compare leaving now with leaving later</li>
+</ul>
+<h2>A real navigator</h2>
+<ul>
+<li>Turn-by-turn voice guidance with your choice of voices</li>
+<li>Smart search: "Springfield Walmart", street addresses, "gas", "coffee"</li>
+<li>Home, Work, recent places and remember-my-parking-spot</li>
+<li>Fog, ice, snow, high wind and flooding warnings where you are</li>
+<li>Storm Chaser mode for experienced chasers</li>
+</ul>
+<p class="note">StormNav is a heads-up tool. Always follow official warnings and drive safely.</p>
+<footer>
+<a href="privacy.html">Privacy policy</a> · Contact: <a href="mailto:michaelfougnie@gmail.com">michaelfougnie@gmail.com</a><br>
+Weather data: NOAA / National Weather Service. Maps: © OpenStreetMap contributors, OpenFreeMap, Esri.
+</footer>
+</main></body></html>

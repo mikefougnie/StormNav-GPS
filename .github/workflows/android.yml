@@ -1,0 +1,68 @@
+name: Build StormNav APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write   # lets the build publish the APK as a release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      # GitHub's Ubuntu runners ship the Android SDK (ANDROID_HOME). Accept its licenses
+      # directly; android-actions/setup-android@v3 hangs on the license prompt there.
+      - name: Accept Android SDK licenses
+        run: |
+          SDKM=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          echo "Using $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Build signed APK
+        env:
+          STORMNAV_KEYSTORE_PASSWORD: ${{ secrets.STORMNAV_KEYSTORE_PASSWORD }}
+          TOMTOM_API_KEY: ${{ secrets.TOMTOM_API_KEY }}
+        run: |
+          if [ -z "$STORMNAV_KEYSTORE_PASSWORD" ]; then echo "::warning::STORMNAV_KEYSTORE_PASSWORD secret not set; signing with a temporary debug key"; fi
+          gradle :app:assembleRelease :app:bundleRelease ${TOMTOM_API_KEY:+-PtomtomApiKey=$TOMTOM_API_KEY}
+      - name: Unit tests
+        run: gradle :app:testDebugUnitTest
+      # Checks destination search against the real Photon + Census services. Informational:
+      # a flaky public service must not block the APK.
+      - name: Live search check
+        continue-on-error: true
+        env:
+          LIVE_SEARCH: "1"
+        run: gradle :app:testDebugUnitTest --tests '*LiveSearchTest*' --tests '*LiveRadarTest*' --tests '*LiveTrafficTest*' --rerun
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: StormNav-apk
+          path: app/build/outputs/apk/release/app-release.apk
+      # A release gives a direct .apk download link that works from a phone browser.
+      - name: Name APK
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk StormNav-build${{ github.run_number }}.apk
+          cp app/build/outputs/bundle/release/app-release.aab StormNav-build${{ github.run_number }}.aab
+          # Same APK under a fixed name, so .../releases/latest/download/StormNav.apk always gets the newest build.
+          cp app/build/outputs/apk/release/app-release.apk StormNav.apk
+      - name: Publish APK as a release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: StormNav build ${{ github.run_number }}
+          prerelease: false
+          make_latest: true
+          body: StormNav built from ${{ github.sha }}. On your phone, download the .apk and open it to install. The .aab (App Bundle) is the file to upload to Google Play.
+          files: |
+            StormNav-build${{ github.run_number }}.apk
+            StormNav.apk
+            StormNav-build${{ github.run_number }}.aab

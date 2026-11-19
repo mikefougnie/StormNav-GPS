@@ -1,0 +1,12 @@
+.gradle/
+.idea/
+local.properties
+**/build/
+*.iml
+*.jks
+*.keystore
+# The release key is committed on purpose; it is useless without the password secret.
+!app/signing/stormnav-release.jks
+server/.venv/
+server/__pycache__/
+server/stormnav.sqlite3

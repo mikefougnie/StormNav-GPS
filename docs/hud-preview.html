@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>StormNav 0.5 – HUD preview</title>
+<style>
+  :root { --g: min(24vw, calc((100vh - 120px) / 3.15), 150px); --panel: linear-gradient(#1c2028, #06080c); --rim: #78808c; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: "Roboto Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif; color: #fff; }
+  canvas#map { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  .panel { background: var(--panel); border: 1.5px solid var(--rim); box-shadow: 0 3px 12px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12); }
+  .t { text-shadow: 0 2px 3px #000; font-weight: 700; white-space: nowrap; }
+  #banner { position: fixed; top: 6px; right: 8px; left: calc(8px + var(--g) * .55); height: clamp(50px, 11vh, 64px); border-radius: 18px;
+            display: flex; align-items: center; padding: 0 12px 0 calc(var(--g) * .5); gap: 10px; cursor: pointer; }
+  #banner .turn { width: 46px; height: 46px; flex: none; }
+  #bdist { font-size: clamp(20px, 5.2vh, 32px); }
+  .div { width: 1px; align-self: stretch; margin: 8px 2px; background: rgba(160,170,180,.45); flex: none; }
+  #binst { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: clamp(15px, 4vh, 24px); }
+  #info { width: 34px; height: 34px; flex: none; }
+  #remain { text-align: right; font-size: clamp(13px, 3.3vh, 19px); line-height: 1.15; }
+  #car { width: 38px; height: 30px; flex: none; }
+  #left { position: fixed; left: 4px; top: 4px; width: var(--g); display: flex; flex-direction: column; gap: 0; z-index: 2; }
+  #left svg { width: var(--g); height: var(--g); margin-bottom: -4px; cursor: pointer; }
+  #right { position: fixed; right: 8px; top: calc(14px + clamp(50px, 11vh, 64px)); width: calc(var(--g) * 1.36); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  #speedo { width: calc(var(--g) * 1.32); height: calc(var(--g) * 1.32); }
+  .card { width: 100%; border-radius: 14px; display: flex; align-items: center; padding: 4px 10px; gap: 6px; }
+  .card .lbl { font-size: calc(var(--g) * .12); text-align: center; }
+  .card .val { font-size: calc(var(--g) * .2); text-align: center; line-height: 1.05; }
+  #eta { height: calc(var(--g) * .56); }
+  #storm { height: calc(var(--g) * .64); border: 3px solid #a855f7; box-shadow: 0 0 14px rgba(168,85,247,.7), inset 0 1px 0 rgba(255,255,255,.12); cursor: pointer; }
+  #stormVal { color: #ffd60a; }
+  #menuBtn { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); border-radius: 30px; padding: 10px 30px 10px 24px; font-size: clamp(17px, 4.4vh, 24px); cursor: pointer; display: flex; align-items: center; gap: 14px; }
+  #status { position: fixed; bottom: calc(18px + clamp(44px, 9vh, 54px)); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 2 * var(--g) - 40px);
+            border-radius: 12px; padding: 4px 10px; font-size: 12px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; border-color: rgba(160,170,180,.4); }
+  #attrib { position: fixed; left: 6px; bottom: 4px; max-width: calc(100vw - 110px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 9px; color: rgba(255,255,255,.65); text-shadow: 0 1px 2px #000; }
+  #demo { position: fixed; right: 8px; bottom: 6px; font-size: 10px; color: #ffd60a; text-shadow: 0 1px 2px #000; font-weight: 700; letter-spacing: .5px; }
+  /* Landscape: proportions measured from the design mockup (u = 1% of screen height). */
+  @media (orientation: landscape) {
+    :root { --u: min(1vh, 0.6vw); --g: calc(var(--u) * 32.5); }
+    #left { left: calc(var(--u) * 2.4); top: calc(var(--u) * 5.5); }
+    #left svg { margin-bottom: calc(var(--u) * -2.2); }
+    #gWind { position: relative; z-index: 2; }
+    #banner { top: calc(var(--u) * 1.2); height: calc(var(--u) * 12.5); left: calc(var(--u) * 30); right: calc(var(--u) * 1.3);
+              padding-left: calc(var(--u) * 8); padding-right: calc(var(--u) * 1.6); border-radius: calc(var(--u) * 2.6); gap: calc(var(--u) * 1.6); }
+    #banner .turn { width: calc(var(--u) * 9); height: calc(var(--u) * 9); }
+    #bdist { font-size: calc(var(--u) * 7.2); }
+    #binst { font-size: calc(var(--u) * 5.6); }
+    #info { width: calc(var(--u) * 6.6); height: calc(var(--u) * 6.6); }
+    #car { width: calc(var(--u) * 7.2); height: calc(var(--u) * 5.4); }
+    #remain { font-size: calc(var(--u) * 4.4); }
+    #right { top: calc(var(--u) * 15.2); right: calc(var(--u) * 1.5); width: calc(var(--u) * 44); gap: calc(var(--u) * 1.4); align-items: center; }
+    #speedo { width: calc(var(--u) * 42); height: calc(var(--u) * 42); }
+    .card { border-radius: calc(var(--u) * 2.4); padding: 0 calc(var(--u) * 2.2); }
+    #eta { height: calc(var(--u) * 15.7); }
+    #storm { height: calc(var(--u) * 17.8); }
+    #eta .lbl { font-size: calc(var(--u) * 3.8); } #eta .val { font-size: calc(var(--u) * 6.8); }
+    #storm .lbl { font-size: calc(var(--u) * 4.1); } #storm .val { font-size: calc(var(--u) * 7.2); }
+    #eta svg { width: calc(var(--u) * 9) !important; height: calc(var(--u) * 9) !important; }
+    #storm svg { width: calc(var(--u) * 7.5) !important; height: calc(var(--u) * 10) !important; }
+    #menuBtn { bottom: calc(var(--u) * 2.3); height: calc(var(--u) * 13.5); padding: 0 calc(var(--u) * 5) 0 calc(var(--u) * 4.5); font-size: calc(var(--u) * 6); border-radius: calc(var(--u) * 7); gap: calc(var(--u) * 3); }
+    #menuBtn svg { width: calc(var(--u) * 6.5); height: calc(var(--u) * 5.2); }
+    #status { bottom: calc(var(--u) * 17.5); max-width: calc(100vw - var(--u) * 100); }
+  }
+  @media (orientation: portrait) {
+    #banner { left: 8px; padding-left: 8px; gap: 7px; }
+    #car, #info { display: none; }
+    #banner .turn { width: 38px; height: 38px; }
+    #bdist { font-size: 22px; }
+    #binst { font-size: 16px; }
+    #remain { font-size: 13px; }
+    #left { top: calc(12px + clamp(50px, 11vh, 64px)); }
+    #binst { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.1; }
+  }
+  /* sheets */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+  .scrim.on { display: flex; }
+  .sheet { width: min(460px, 100%); max-height: 90vh; overflow: auto; border-radius: 18px; padding: 16px 16px 12px; }
+  .sheet h2 { margin: 0 0 10px; font-size: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn { font: inherit; font-size: 15px; color: #fff; border-radius: 12px; padding: 12px 8px; cursor: pointer; background: var(--panel); border: 1.5px solid var(--rim); }
+  .btn.on { border-color: #29b6f6; box-shadow: 0 0 0 1px #29b6f6 inset; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 12px 2px 4px; font-size: 14px; }
+  .row input[type=range] { flex: 1; accent-color: #29b6f6; }
+  .sheet p { font-size: 14px; line-height: 1.45; color: #d6dbe2; margin: 6px 0; }
+  .close { margin-top: 12px; width: 100%; }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+
+<div id="banner" class="panel">
+  <svg class="turn" id="turn" viewBox="0 0 100 100"></svg>
+  <div id="bdist" class="t">1.8 mi</div>
+  <div class="div"></div>
+  <div id="binst" class="t">Turn Right onto SR-29</div>
+  <svg id="info" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16.5" fill="none" stroke="#29b6f6" stroke-width="3"/><circle cx="20" cy="12" r="2.6" fill="#29b6f6"/><rect x="17.8" y="17" width="4.4" height="13" rx="1.5" fill="#29b6f6"/></svg>
+  <div class="div"></div>
+  <svg id="car" viewBox="0 0 48 36"><path fill="#fff" d="M9 15 L13 5 Q14 3 17 3 L31 3 Q34 3 35 5 L39 15 Q44 16 44 21 L44 28 L4 28 L4 21 Q4 16 9 15Z"/><path fill="#111" d="M13 14 L16 6 L32 6 L35 14Z"/><circle cx="11" cy="21" r="2.6" fill="#111"/><circle cx="37" cy="21" r="2.6" fill="#111"/><rect x="6" y="27" width="8" height="7" rx="2" fill="#fff"/><rect x="34" y="27" width="8" height="7" rx="2" fill="#fff"/></svg>
+  <div id="remain" class="t"><div id="rTime">12 min</div><div id="rDist">8.4 mi</div></div>
+</div>
+
+<div id="left">
+  <svg id="gRain" viewBox="0 0 200 200"></svg>
+  <svg id="gWind" viewBox="0 0 200 200"></svg>
+  <svg id="gTemp" viewBox="0 0 200 200"></svg>
+</div>
+
+<div id="right">
+  <svg id="speedo" viewBox="0 0 200 200"></svg>
+  <div id="eta" class="card panel">
+    <svg viewBox="0 0 40 40" style="width:calc(var(--g)*.32);height:calc(var(--g)*.32);flex:none"><line x1="8" y1="5" x2="8" y2="37" stroke="#fff" stroke-width="2.6"/><g id="flag"></g></svg>
+    <div style="flex:1"><div class="lbl t">ETA</div><div class="val t" id="etaVal">8:24 PM</div></div>
+  </div>
+  <div id="storm" class="card panel">
+    <svg viewBox="0 0 40 50" style="width:calc(var(--g)*.28);height:calc(var(--g)*.36);flex:none"><defs><linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d8b4fe"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path fill="url(#bolt)" d="M25 1 L6 28 L19 28 L13 49 L34 20 L21 20 Z"/></svg>
+    <div style="flex:1"><div class="lbl t" id="stormLbl">Storm Timer</div><div class="val t" id="stormVal">6 min</div></div>
+  </div>
+</div>
+
+<div id="status" class="panel t"></div>
+<div id="menuBtn" class="panel t"><svg viewBox="0 0 30 24" width="30" height="24"><rect y="1" width="30" height="4" rx="2" fill="#fff"/><rect y="10" width="30" height="4" rx="2" fill="#fff"/><rect y="19" width="30" height="4" rx="2" fill="#fff"/></svg>Menu</div>
+<div id="attrib">Simulated map &amp; radar · app uses Esri imagery, OpenStreetMap roads, NOAA MRMS radar</div>
+<div id="demo">DEMO DRIVE</div>
+
+<div class="scrim" id="menu"><div class="sheet panel">
+  <h2>StormNav</h2>
+  <div class="grid">
+    <button class="btn" id="mPlay">Pause drive</button>
+    <button class="btn" id="mRestart">Restart drive</button>
+    <button class="btn" id="mSpeed">Sim speed: 4×</button>
+    <button class="btn" id="mUnits">Units: mi</button>
+    <button class="btn" id="mMap">Map: Satellite</button>
+    <button class="btn" id="mTrip">Trip weather</button>
+  </div>
+  <div class="row"><span>Radar opacity</span><input type="range" id="mOpacity" min="0" max="100" value="62"></div>
+  <p>This is a browser preview of the StormNav 0.5 driving screen. The drive, the map and the storm are simulated here; in the Android app the same HUD is fed by GPS, the OSRM route, NWS hourly forecasts and the live NOAA radar image along your route.</p>
+  <button class="btn close" data-close>Close</button>
+</div></div>
+
+<div class="scrim" id="tripSheet"><div class="sheet panel">
+  <h2>Trip weather</h2>
+  <div id="tripBody"></div>
+  <button class="btn close" data-close>OK</button>
+</div></div>
+
+<script>
+(() => {
+'use strict';
+// ------------------------------------------------------------------ helpers
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rnd = mulberry(53);
+function hash(x, y) { let h = x * 374761393 + y * 668265263; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; }
+function vnoise(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  return lerp(lerp(hash(xi, yi), hash(xi + 1, yi), u), lerp(hash(xi, yi + 1), hash(xi + 1, yi + 1), u), v); }
+function fbm(x, y) { let s = 0, a = 0.5, f = 1; for (let i = 0; i < 4; i++) { s += a * vnoise(x * f, y * f); f *= 2.03; a *= 0.5; } return s / 0.9375; }
+function lerpColor(stops, t) { t = clamp(t, 0, 1) * (stops.length - 1); const i = Math.min(Math.floor(t), stops.length - 2), f = t - i;
+  const a = stops[i], b = stops[i + 1]; return `rgb(${Math.round(lerp(a[0], b[0], f))},${Math.round(lerp(a[1], b[1], f))},${Math.round(lerp(a[2], b[2], f))})`; }
+
+// ------------------------------------------------------------------ world (meters, y grows south)
+const WORLD = 24000;
+const TEX = 1100; // terrain texture: 20 m per pixel
+// Route: I-80 north, exit right onto SR-29 east (like the mockup).
+const route = [];
+(function buildRoute() {
+  for (let y = 21800; y >= 7200; y -= 50) route.push([10000 + 260 * Math.sin((21800 - y) / 2600) + 120 * Math.sin((21800 - y) / 900), y]);
+  const [ex, ey] = route[route.length - 1];
+  for (let a = 0; a <= 90; a += 6) { const r = 220, ang = Math.PI - a * Math.PI / 180; route.push([ex + r + r * Math.cos(ang), ey - r * Math.sin(ang)]); }
+  const [sx, sy] = route[route.length - 1];
+  for (let x = sx + 50; x <= sx + 6200; x += 50) route.push([x, sy - 40 * Math.sin((x - sx) / 1200) + 0.03 * (x - sx)]);
+})();
+const cum = [0]; for (let i = 1; i < route.length; i++) cum.push(cum[i - 1] + Math.hypot(route[i][0] - route[i - 1][0], route[i][1] - route[i - 1][1]));
+const TOTAL = cum[cum.length - 1];
+const TURN_AT = cum[route.findIndex(p => p[1] <= 7200)];
+const maneuvers = [ { at: TURN_AT, kind: 'right', text: 'Turn Right onto SR-29' }, { at: TOTAL, kind: 'arrive', text: 'Arrive at destination' } ];
+function pointAt(s) { s = clamp(s, 0, TOTAL); let lo = 0, hi = cum.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; }
+  const t = (s - cum[lo]) / Math.max(1e-6, cum[hi] - cum[lo]); return [lerp(route[lo][0], route[hi][0], t), lerp(route[lo][1], route[hi][1], t)]; }
+function headingAt(s) { const a = pointAt(s - 40), b = pointAt(s + 120); return Math.atan2(b[0] - a[0], -(b[1] - a[1])); }
+
+// County roads and highways (random but fixed)
+const roads = [];
+(function buildRoads() {
+  for (let k = 0; k < 16; k++) { const y0 = 600 + k * 1350 + rnd() * 500, pts = []; let y = y0;
+    for (let x = 0; x <= WORLD; x += 250) { y += (rnd() - 0.5) * 120; pts.push([x, y]); } roads.push({ pts, w: 1.2, c: 'rgba(235,235,225,.55)' }); }
+  for (let k = 0; k < 15; k++) { const x0 = 700 + k * 1450 + rnd() * 500, pts = []; let x = x0;
+    for (let y = 0; y <= WORLD; y += 250) { x += (rnd() - 0.5) * 120; pts.push([x, y]); } if (Math.abs(x0 - 10000) > 500) roads.push({ pts, w: 1.2, c: 'rgba(235,235,225,.55)' }); }
+  const hw = (pts) => roads.push({ pts, w: 3.2, c: 'rgba(205,205,205,.85)', casing: true });
+  hw(Array.from({ length: 45 }, (_, i) => [i * 500, 13000 - i * 160 + 300 * Math.sin(i / 5)]));
+  hw(Array.from({ length: 45 }, (_, i) => [i * 500, 3500 + i * 90 + 200 * Math.sin(i / 4)]));
+  hw(Array.from({ length: 45 }, (_, i) => [14500 + 600 * Math.sin(i / 6) - i * 40, i * 500]));
+  // SR-29 continues west of the exit too
+  const [jx, jy] = pointAt(TURN_AT + 400); hw(Array.from({ length: 25 }, (_, i) => [jx - i * 400, jy + 30 * Math.sin(i)]));
+})();
+
+// ------------------------------------------------------------------ terrain texture
+const terrain = document.createElement('canvas'); terrain.width = terrain.height = TEX;
+(function paintTerrain() {
+  const g = terrain.getContext('2d'), img = g.createImageData(TEX, TEX), d = img.data;
+  for (let y = 0; y < TEX; y++) for (let x = 0; x < TEX; x++) {
+    const n = fbm(x / 70, y / 70), f = fbm(x / 28 + 50, y / 28 + 9), w = fbm(x / 120 + 300, y / 120 + 7);
+    let r = lerp(28, 78, n), gg = lerp(62, 128, n), b = lerp(22, 44, n);
+    if (f > 0.62) { const t = clamp((f - 0.62) * 6, 0, 1); r = lerp(r, 150, t * .7); gg = lerp(gg, 145, t * .6); b = lerp(b, 95, t * .7); }
+    if (w > 0.74) { const t = clamp((w - 0.74) * 12, 0, 1); r = lerp(r, 18, t); gg = lerp(gg, 40, t); b = lerp(b, 62, t); }
+    const j = (hash(x, y) - 0.5) * 16, i = (y * TEX + x) * 4;
+    d[i] = r + j; d[i + 1] = gg + j; d[i + 2] = b + j; d[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  for (let k = 0; k < 42000; k++) { const x = rnd() * TEX, y = rnd() * TEX;
+    if (fbm(x / 40 + 9, y / 40 + 3) < 0.5) continue;
+    g.fillStyle = rnd() < 0.5 ? 'rgba(14,40,16,.7)' : 'rgba(40,82,30,.65)'; g.beginPath(); g.arc(x, y, 0.8 + rnd() * 1.8, 0, 7); g.fill(); }
+  for (let k = 0; k < 9; k++) { const x = rnd() * TEX, y = rnd() * TEX; g.fillStyle = 'rgba(150,140,120,.45)';
+    for (let m = 0; m < 40; m++) g.fillRect(x + (rnd() - .5) * 40, y + (rnd() - .5) * 40, 2 + rnd() * 3, 2 + rnd() * 3); }
+})();
+
+// ------------------------------------------------------------------ radar (simulated cells drifting east)
+const RAD = 440, RAD_M = WORLD / RAD;
+const radarCv = document.createElement('canvas'); radarCv.width = radarCv.height = RAD;
+const radarField = new Float32Array(RAD * RAD);
+const speckle = new Float32Array(RAD * RAD); for (let i = 0; i < speckle.length; i++) speckle[i] = 0.82 + 0.3 * fbm((i % RAD) / 3.2, Math.floor(i / RAD) / 3.2);
+let cells = [];
+function seedCells() {
+  const r = mulberry(7); cells = [];
+  // A SW–NE squall line west of I-80 whose north end already reaches the route ahead.
+  for (let k = 0; k < 16; k++) { const t = k / 15; cells.push({ x: lerp(2200, 9500, t) + (r() - .5) * 1200, y: lerp(19500, 8300, t) + (r() - .5) * 1000,
+    rx: 700 + r() * 900, ry: 1100 + r() * 1300, a: 0.5 + r() * 0.5, rot: -0.6 + (r() - .5) * .5 }); }
+  for (let k = 0; k < 10; k++) { const t = k / 9; cells.push({ x: lerp(800, 7600, t) + (r() - .5) * 1400, y: lerp(20500, 9300, t) + (r() - .5) * 1400, rx: 1600 + r() * 1200, ry: 2200 + r() * 1500, a: 0.26 + r() * 0.12, rot: -0.6 }); }
+  for (let k = 0; k < 5; k++) cells.push({ x: r() * 5000, y: 6000 + r() * 14000, rx: 1500 + r() * 1500, ry: 1500 + r() * 1500, a: 0.2 + r() * 0.08, rot: r() * 3 });
+  for (let k = 0; k < 4; k++) cells.push({ x: 14000 + r() * 5000, y: 12000 + r() * 6000, rx: 500 + r() * 500, ry: 500 + r() * 500, a: 0.2 + r() * 0.2, rot: 0 });
+}
+const STORM_VX = 5.5, STORM_VY = -1.5; // m/s
+function fieldAt(x, y, t) {
+  let v = 0, mx = 0;
+  for (const c of cells) { const cx = c.x + STORM_VX * t, cy = c.y + STORM_VY * t, dx = x - cx, dy = y - cy;
+    if (Math.abs(dx) > 3 * Math.max(c.rx, c.ry) || Math.abs(dy) > 3 * Math.max(c.rx, c.ry)) continue;
+    const cs = Math.cos(c.rot), sn = Math.sin(c.rot), u = (dx * cs + dy * sn) / c.rx, w = (-dx * sn + dy * cs) / c.ry;
+    const e = c.a * Math.exp(-(u * u + w * w)); v += e; if (e > mx) mx = e; }
+  // Max plus a little of the overlap, so neighbouring cells don't add up to solid magenta.
+  return mx + 0.22 * (v - mx);
+}
+// NWS-like reflectivity palette
+const PAL = [[0.16, [0, 170, 60, 150]], [0.28, [0, 210, 40, 175]], [0.42, [140, 220, 0, 190]], [0.52, [255, 236, 0, 205]], [0.64, [255, 150, 0, 215]], [0.78, [240, 20, 20, 225]], [0.95, [200, 0, 60, 230]], [1.15, [220, 0, 220, 235]]];
+const LEVEL_MODERATE = 0.52;
+function renderRadar(t) {
+  const g = radarCv.getContext('2d'), img = g.createImageData(RAD, RAD), d = img.data;
+  for (let py = 0; py < RAD; py++) for (let px = 0; px < RAD; px++) {
+    const i = py * RAD + px, v = fieldAt((px + .5) * RAD_M, (py + .5) * RAD_M, t) * speckle[i];
+    radarField[i] = v; let col = null; for (const [th, c] of PAL) if (v >= th) col = c;
+    if (col) { d[i * 4] = col[0]; d[i * 4 + 1] = col[1]; d[i * 4 + 2] = col[2]; d[i * 4 + 3] = col[3]; }
+  }
+  g.putImageData(img, 0, 0);
+}
+function radarAt(x, y) { const px = Math.floor(x / RAD_M), py = Math.floor(y / RAD_M); if (px < 0 || py < 0 || px >= RAD || py >= RAD) return 0; return radarField[py * RAD + px]; }
+/** Same idea as RadarRouteAnalyzer: walk the route ahead and find the next moderate-or-heavier stretch. */
+function stormAhead(s) {
+  let start = -1, peak = 0, end = -1;
+  for (let d = s; d <= TOTAL; d += 100) { const [x, y] = pointAt(d); const v = radarAt(x, y);
+    if (v >= LEVEL_MODERATE) { if (start < 0) start = d; peak = Math.max(peak, v); end = d; } else if (start >= 0 && d - end > 1500) break; }
+  return start < 0 ? null : { start, end, peak };
+}
+const intensityLabel = v => v >= 0.95 ? 'Severe storm core' : v >= 0.64 ? 'Heavy rain' : 'Moderate rain';
+
+// ------------------------------------------------------------------ state
+const state = { s: 0, v: 27.7, simT: 0, playing: true, simSpeed: 4, units: 'mi', basemap: 'sat', opacity: 0.62, arrived: false, clock0: 0 };
+function resetDrive() { const d = new Date(); d.setHours(20, 12, 0, 0); state.clock0 = d.getTime(); state.s = 3000; state.v = 27.2; state.simT = 0; state.arrived = false; seedCells(); renderRadar(0); }
+resetDrive();
+
+// ------------------------------------------------------------------ units
+const MI = 1609.344;
+function fmtDist(m) { if (state.units === 'km') return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
+  const mi = m / MI; return mi < 0.1 ? `${Math.round(m * 3.28084 / 50) * 50} ft` : `${mi.toFixed(mi < 10 ? 1 : 0)} mi`; }
+const fmtSpeed = mps => Math.round(state.units === 'km' ? mps * 3.6 : mps * 2.236936);
+function fmtClock(ms) { const d = new Date(ms); let h = d.getHours(), m = d.getMinutes(); const ap = h < 12 ? 'AM' : 'PM'; h = h % 12 || 12; return `${h}:${String(m).padStart(2, '0')} ${ap}`; }
+const fmtDur = s => { const m = Math.max(0, Math.round(s / 60)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`; };
+
+// ------------------------------------------------------------------ HUD drawing (SVG)
+function bezel(svg) {
+  const defs = el('defs', {}, svg);
+  const lg = el('linearGradient', { id: svg.id + 'rim', x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+  [['0', '#c8cdd4'], ['.55', '#464a52'], ['1', '#aaafb6']].forEach(([o, c]) => el('stop', { offset: o, 'stop-color': c }, lg));
+  const rg = el('radialGradient', { id: svg.id + 'face', cx: .5, cy: .4, r: .6 }, defs);
+  [['0', '#1e222a'], ['1', '#040508']].forEach(([o, c]) => el('stop', { offset: o, 'stop-color': c }, rg));
+  el('circle', { cx: 100, cy: 100, r: 99, fill: `url(#${svg.id}rim)` }, svg);
+  el('circle', { cx: 100, cy: 100, r: 93, fill: `url(#${svg.id}face)` }, svg);
+}
+const polar = (r, deg) => [100 + r * Math.cos(deg * Math.PI / 180), 100 + r * Math.sin(deg * Math.PI / 180)];
+function arcPath(r, a0, a1) { const [x0, y0] = polar(r, a0), [x1, y1] = polar(r, a1); return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`; }
+const GAUGE_COLORS = {
+  rain: [[0, 200, 83], [174, 234, 0], [255, 214, 0], [255, 145, 0], [244, 30, 30]],
+  wind: [[0, 145, 234], [0, 176, 255], [64, 196, 255], [128, 216, 255]],
+  temp: [[41, 121, 255], [0, 229, 255], [255, 234, 0], [255, 109, 0], [244, 30, 30]] };
+const ICONS = {
+  rain: `<g transform="translate(100 62)"><circle cx="-12" cy="0" r="10" fill="#90caf9"/><circle cx="2" cy="-6" r="13" fill="#90caf9"/><circle cx="15" cy="1" r="9" fill="#90caf9"/><rect x="-22" y="-1" width="45" height="11" rx="5" fill="#90caf9"/><g stroke="#29b6f6" stroke-width="4" stroke-linecap="round"><line x1="-12" y1="16" x2="-15" y2="24"/><line x1="1" y1="16" x2="-2" y2="24"/><line x1="14" y1="16" x2="11" y2="24"/></g></g>`,
+  wind: `<g transform="translate(100 64)" fill="none" stroke="#40c4ff" stroke-width="4.5" stroke-linecap="round"><path d="M-26 -9 H8 A7 7 0 1 0 1 -16"/><path d="M-28 1 H18 A8 8 0 1 1 10 9"/><path d="M-20 11 H2"/></g>`,
+  temp: `<g transform="translate(100 60)"><rect x="-6" y="-26" width="12" height="34" rx="6" fill="none" stroke="#ef5350" stroke-width="3.2"/><circle cx="0" cy="14" r="9" fill="#ef5350"/><rect x="-2.5" y="-10" width="5" height="22" fill="#ef5350"/><g stroke="#ef5350" stroke-width="2.4"><line x1="10" y1="-20" x2="16" y2="-20"/><line x1="10" y1="-13" x2="16" y2="-13"/><line x1="10" y1="-6" x2="16" y2="-6"/></g></g>` };
+const gauges = {};
+function makeGauge(svg, kind, label) {
+  bezel(svg);
+  const segs = [];
+  for (let i = 0; i < 54; i++) { const a0 = 135 + i * 5, a1 = a0 + 5.4;
+    segs.push(el('path', { d: arcPath(80, a0, a1), fill: 'none', 'stroke-width': 13, stroke: '#282e38' }, svg)); }
+  const ticks = el('g', { stroke: 'rgba(230,235,240,.8)', 'stroke-width': 1.8 }, svg);
+  for (let i = 0; i <= 27; i++) { const a = 135 + i * 10, [x1, y1] = polar(66, a), [x2, y2] = polar(i % 3 ? 61 : 57, a); el('line', { x1, y1, x2, y2 }, ticks); }
+  svg.insertAdjacentHTML('beforeend', ICONS[kind]);
+  const val = el('text', { x: 100, y: 125, 'text-anchor': 'middle', 'font-size': 39, 'font-weight': 700, fill: '#fff', style: 'paint-order:stroke;stroke:#000;stroke-width:2px' }, svg);
+  el('text', { x: 100, y: 156, 'text-anchor': 'middle', 'font-size': 19, 'font-weight': 600, fill: '#fff' }, svg).textContent = label;
+  gauges[kind] = { segs, val, colors: GAUGE_COLORS[kind], last: -1 };
+}
+function setGauge(kind, text, frac) {
+  const g = gauges[kind]; g.val.textContent = text; g.val.setAttribute('font-size', text.length > 5 ? 33 : 39);
+  const n = Math.round(clamp(frac, 0.04, 1) * 54); if (n === g.last) return; g.last = n;
+  g.segs.forEach((p, i) => p.setAttribute('stroke', i < n ? lerpColor(g.colors, i / 53) : '#282e38'));
+}
+makeGauge($('gRain'), 'rain', 'Rain Prob.'); makeGauge($('gWind'), 'wind', 'Wind'); makeGauge($('gTemp'), 'temp', 'Temp');
+
+let needle, speedText, speedUnit;
+function makeSpeedo() {
+  const svg = $('speedo'); svg.innerHTML = ''; bezel(svg);
+  const max = state.units === 'km' ? 200 : 120, step = state.units === 'km' ? 10 : 5, every = state.units === 'km' ? 40 : 20;
+  el('path', { d: arcPath(84, 135 + 270 * 0.8, 405), fill: 'none', stroke: '#e51c23', 'stroke-width': 7 }, svg);
+  for (let v = 0; v <= max; v += step) { const a = 135 + 270 * v / max, major = v % every === 0;
+    const [x1, y1] = polar(88, a), [x2, y2] = polar(major ? 74 : 80, a);
+    el('line', { x1, y1, x2, y2, stroke: '#fff', 'stroke-width': major ? 3 : 1.4 }, svg);
+    if (major) { const [tx, ty] = polar(60, a); el('text', { x: tx, y: ty + 5, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 700, fill: '#fff' }, svg).textContent = v; } }
+  needle = el('g', {}, svg); el('path', { d: 'M100 14 L104.5 100 L95.5 100 Z', fill: '#e51c23', style: 'filter:drop-shadow(0 0 2px #000)' }, needle);
+  el('circle', { cx: 100, cy: 100, r: 11, fill: '#3a3d44', stroke: '#15171b', 'stroke-width': 3 }, svg);
+  speedText = el('text', { x: 100, y: 152, 'text-anchor': 'middle', 'font-size': 44, 'font-weight': 700, fill: '#fff', style: 'paint-order:stroke;stroke:#000;stroke-width:2px' }, svg);
+  speedUnit = el('text', { x: 100, y: 175, 'text-anchor': 'middle', 'font-size': 18, 'font-weight': 600, fill: '#fff' }, svg);
+  speedUnit.textContent = state.units === 'km' ? 'km/h' : 'mph'; makeSpeedo.max = max;
+}
+makeSpeedo();
+function setSpeed(mps) { const v = fmtSpeed(mps); speedText.textContent = v; needle.setAttribute('transform', `rotate(${-135 + 270 * clamp(v / makeSpeedo.max, 0, 1)} 100 100)`); }
+
+(function flag() { const g = $('flag'); for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++)
+  el('rect', { x: 9 + c * 5.4, y: 5 + r * 5.4 + Math.sin(c / 4 * Math.PI) * 2, width: 5.5, height: 5.5, fill: (r + c) % 2 ? '#222' : '#fff' }, g); })();
+
+const TURN_SVG = {
+  right: '<path d="M30 92 V52 Q30 34 48 34 H64" fill="none" stroke="#fff" stroke-width="15"/><path d="M60 14 L88 34 L60 54 Z" fill="#fff"/>',
+  straight: '<path d="M50 92 V38" fill="none" stroke="#fff" stroke-width="15"/><path d="M26 42 L50 10 L74 42 Z" fill="#fff"/>',
+  arrive: '<circle cx="50" cy="38" r="24" fill="#fff"/><path d="M30 46 L50 92 L70 46 Z" fill="#fff"/><circle cx="50" cy="38" r="9" fill="#111"/>' };
+let lastTurn = '';
+function setTurn(kind) { if (kind === lastTurn) return; lastTurn = kind; $('turn').innerHTML = `<g style="filter:drop-shadow(0 2px 2px #000)">${TURN_SVG[kind]}</g>`; }
+
+// ------------------------------------------------------------------ map rendering
+const cv = $('map'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; }
+addEventListener('resize', resize); resize();
+let camHeading = headingAt(0);
+function drawMap() {
+  const [cx, cy] = pointAt(state.s);
+  const target = headingAt(state.s); let dh = target - camHeading; while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI; camHeading += dh * 0.08;
+  const z = Math.max(W, H) / 15000; // px per meter (~15 km across the long side)
+  const ax = W * 0.5, ay = H * (W > H ? 0.66 : 0.68);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = state.basemap === 'sat' ? '#1d3a1a' : '#0d141c'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(ax, ay); ctx.rotate(-camHeading); ctx.scale(z, z); ctx.translate(-cx, -cy);
+  if (state.basemap === 'sat') { ctx.imageSmoothingEnabled = true; ctx.drawImage(terrain, 0, 0, WORLD, WORLD); }
+  // radar beneath roads
+  ctx.globalAlpha = state.opacity; ctx.imageSmoothingEnabled = false; ctx.drawImage(radarCv, 0, 0, WORLD, WORLD); ctx.globalAlpha = 1;
+  // roads
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (const r of roads) { ctx.beginPath(); r.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+    if (r.casing) { ctx.strokeStyle = 'rgba(30,30,30,.5)'; ctx.lineWidth = (r.w + 2.5) / z; ctx.stroke(); }
+    ctx.strokeStyle = state.basemap === 'sat' ? r.c : (r.casing ? '#5d6773' : '#36404b'); ctx.lineWidth = r.w / z; ctx.stroke(); }
+  // route (casing + blue)
+  ctx.beginPath(); route.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+  ctx.strokeStyle = '#0a3c8c'; ctx.lineWidth = 15 / z; ctx.stroke();
+  ctx.strokeStyle = '#1e88ff'; ctx.lineWidth = 10 / z; ctx.stroke();
+  ctx.restore();
+  // I-80 shield, upright, at a point on the highway ahead
+  const toScreen = ([x, y]) => { const dx = (x - cx) * z, dy = (y - cy) * z, c = Math.cos(-camHeading), s = Math.sin(-camHeading); return [ax + dx * c - dy * s, ay + dx * s + dy * c]; };
+  if (state.s < TURN_AT - 900) drawShield(...toScreen(pointAt(state.s + 2600 - ((state.s) % 2600))), '80');
+  // nav arrow
+  ctx.save(); ctx.translate(ax, ay); const s = Math.min(W, H) * 0.075 + 16;
+  ctx.beginPath(); ctx.moveTo(0, -s * .55); ctx.lineTo(s * .42, s * .4); ctx.lineTo(0, s * .2); ctx.lineTo(-s * .42, s * .4); ctx.closePath();
+  ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+  const gr = ctx.createLinearGradient(-s / 2, -s / 2, s / 2, s / 2); gr.addColorStop(0, '#64b5f6'); gr.addColorStop(1, '#1565c0'); ctx.fillStyle = gr; ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore();
+}
+function drawShield(x, y, num) {
+  if (x < -40 || y < -40 || x > W + 40 || y > H + 40) return;
+  const s = Math.min(W, H) * 0.045 + 10; ctx.save(); ctx.translate(x, y);
+  const shape = () => { ctx.beginPath(); ctx.moveTo(-s * .5, -s * .45); ctx.quadraticCurveTo(0, -s * .6, s * .5, -s * .45); ctx.quadraticCurveTo(s * .62, s * .2, 0, s * .55); ctx.quadraticCurveTo(-s * .62, s * .2, -s * .5, -s * .45); ctx.closePath(); };
+  shape(); ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 6; ctx.fill(); ctx.shadowColor = 'transparent';
+  ctx.save(); ctx.scale(.86, .86); shape(); ctx.clip(); ctx.fillStyle = '#1a4fb5'; ctx.fillRect(-s, -s * .18, s * 2, s); ctx.fillStyle = '#d32f2f'; ctx.fillRect(-s, -s, s * 2, s * .82); ctx.restore();
+  ctx.fillStyle = '#fff'; ctx.font = `700 ${s * .42}px Arial`; ctx.textAlign = 'center'; ctx.fillText(num, 0, s * .32); ctx.restore();
+}
+
+// ------------------------------------------------------------------ simulation + HUD
+let radarClock = 0, lastFrame = performance.now(), statusText = '';
+function nextManeuver() { return maneuvers.find(m => m.at > state.s + 5) || maneuvers[maneuvers.length - 1]; }
+function step(dtReal) {
+  if (!state.playing || state.arrived) return;
+  const dt = Math.min(dtReal, 0.1) * state.simSpeed;
+  state.simT += dt;
+  const toTurn = TURN_AT - state.s, toEnd = TOTAL - state.s;
+  let target = 27.7 + 0.9 * Math.sin(state.simT / 23);              // ~62 mph on I-80
+  if (toTurn > 0 && toTurn < 700) target = lerp(13, 27.7, toTurn / 700); // slow for the exit
+  if (toTurn <= 0) target = Math.min(22.4, 13 + (-toTurn) / 60);       // 50 mph on SR-29
+  if (toEnd < 600) target = Math.max(0, lerp(0, 13, toEnd / 600));
+  state.v += clamp(target - state.v, -3 * dt, 2 * dt);
+  state.s += state.v * dt;
+  if (state.s >= TOTAL - 2) { state.s = TOTAL; state.v = 0; state.arrived = true; }
+  radarClock += dtReal;
+  if (radarClock > 0.6) { radarClock = 0; renderRadar(state.simT); }
+}
+function hud() {
+  const m = nextManeuver(), toM = Math.max(0, m.at - state.s);
+  setTurn(state.arrived ? 'arrive' : m.kind === 'right' && toM < 4000 ? 'right' : m.kind === 'arrive' ? 'arrive' : 'right');
+  $('bdist').textContent = state.arrived ? '' : fmtDist(toM);
+  $('binst').textContent = state.arrived ? 'You have arrived' : m.text;
+  const remain = TOTAL - state.s, plan = state.v >= 8 ? (state.v + 24) / 2 : 24, remS = remain / plan;
+  $('rTime').textContent = fmtDur(remS); $('rDist').textContent = fmtDist(remain);
+  const now = state.clock0 + state.simT * 1000; $('etaVal').textContent = fmtClock(now + remS * 1000);
+  setSpeed(state.v);
+  // Storm timer
+  const st = state.arrived ? null : stormAhead(state.s);
+  const sv = $('stormVal'), sl = $('stormLbl');
+  if (!st) { sl.textContent = 'Storm Timer'; sv.textContent = 'Clear'; sv.style.color = '#69f0ae'; statusText = 'Radar clear on route'; }
+  else if (st.start - state.s < 300) { sl.textContent = 'In storm'; sv.textContent = 'NOW'; sv.style.color = '#ff5252'; statusText = `⛈ ${intensityLabel(st.peak)} now, ${fmtDist(st.end - state.s)} long`; }
+  else { const min = Math.max(1, Math.round((st.start - state.s) / plan / 60)); sl.textContent = 'Storm Timer'; sv.textContent = `${min} min`; sv.style.color = '#ffd60a';
+    statusText = `⛈ ${intensityLabel(st.peak)} in ${fmtDist(st.start - state.s)} (~${min} min), ${fmtDist(st.end - st.start)} long`; }
+  $('status').textContent = statusText + '  •  ⚠ 1 NWS alert on route (demo)';
+  // Gauges: simulated "next hour" conditions that react to the nearby storm
+  const [x, y] = pointAt(state.s); let near = 0;
+  for (let a = 0; a < 8; a++) for (const r of [1500, 4000]) near = Math.max(near, radarAt(x + r * Math.cos(a * .785), y + r * Math.sin(a * .785)) * (r === 1500 ? 1 : 0.8));
+  near = Math.max(near, radarAt(x, y));
+  const pop = Math.round(clamp(28 + near * 55, 5, 100)), wind = 9 + near * 11, tempF = 81 - near * 5;
+  setGauge('rain', `${pop}%`, pop / 100);
+  setGauge('wind', state.units === 'km' ? `${Math.round(wind * 1.609)} km/h` : `${Math.round(wind)} mph`, wind / 50);
+  setGauge('temp', state.units === 'km' ? `${Math.round((tempF - 32) * 5 / 9)}°C` : `${Math.round(tempF)}°F`, tempF / 110);
+}
+function frame(t) { const dt = (t - lastFrame) / 1000; lastFrame = t; step(dt); drawMap(); hud(); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+
+// ------------------------------------------------------------------ menu
+const open = id => $(id).classList.add('on');
+document.querySelectorAll('.scrim').forEach(s => s.addEventListener('click', e => { if (e.target === s || e.target.hasAttribute('data-close')) s.classList.remove('on'); }));
+$('menuBtn').onclick = () => open('menu');
+$('mPlay').onclick = () => { state.playing = !state.playing; $('mPlay').textContent = state.playing ? 'Pause drive' : 'Resume drive'; };
+$('mRestart').onclick = () => { resetDrive(); state.playing = true; $('mPlay').textContent = 'Pause drive'; $('menu').classList.remove('on'); };
+const speeds = [1, 4, 10];
+$('mSpeed').onclick = () => { state.simSpeed = speeds[(speeds.indexOf(state.simSpeed) + 1) % speeds.length]; $('mSpeed').textContent = `Sim speed: ${state.simSpeed}×`; };
+$('mUnits').onclick = () => { state.units = state.units === 'mi' ? 'km' : 'mi'; $('mUnits').textContent = `Units: ${state.units}`; makeSpeedo(); Object.values(gauges).forEach(g => g.last = -1); };
+$('mMap').onclick = () => { state.basemap = state.basemap === 'sat' ? 'dark' : 'sat'; $('mMap').textContent = state.basemap === 'sat' ? 'Map: Satellite' : 'Map: Dark'; };
+$('mOpacity').oninput = e => { state.opacity = e.target.value / 100; };
+function showTrip() {
+  $('menu').classList.remove('on');
+  $('tripBody').innerHTML = `<p><b>To:</b> Springfield</p><p><b>Radar on route:</b> ${statusText}</p>
+    <p><b>NWS alerts:</b> 1 on route (demo) — Severe Thunderstorm Warning (Severe)</p>
+    <p><b>Storm Timer</b> is the minutes until your route reaches the next stretch where radar shows moderate or heavier rain right now, at your current pace. It does not yet account for storm movement — in this demo the cells drift east, so watch the timer change.</p>`;
+  open('tripSheet');
+}
+$('mTrip').onclick = showTrip; $('banner').onclick = showTrip; $('storm').onclick = showTrip;
+document.querySelectorAll('#left svg').forEach(g => g.onclick = showTrip);
+})();
+</script>
+</body>
+</html>
